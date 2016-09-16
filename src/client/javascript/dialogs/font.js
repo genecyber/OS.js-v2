@@ -1,18 +1,18 @@
 /*!
- * OS.js - JavaScript Operating System
+ * OS.js - JavaScript Cloud/Web Desktop Platform
  *
- * Copyright (c) 2011-2015, Anders Evenrud <andersevenrud@gmail.com>
+ * Copyright (c) 2011-2016, Anders Evenrud <andersevenrud@gmail.com>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met: 
- * 
+ * modification, are permitted provided that the following conditions are met:
+ *
  * 1. Redistributions of source code must retain the above copyright notice, this
- *    list of conditions and the following disclaimer. 
+ *    list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
  *    this list of conditions and the following disclaimer in the documentation
- *    and/or other materials provided with the distribution. 
- * 
+ *    and/or other materials provided with the distribution.
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -33,23 +33,25 @@
   /**
    * An 'Font Selection' dialog
    *
-   * @param   args      Object        An object with arguments
-   * @param   callback  Function      Callback when done => fn(ev, button, result)
+   * @example
    *
-   * @option    args    title               String      Dialog title
-   * @option    args    fontName            String      Current font name (default=internal)
-   * @option    args    fontSize            int         Current font size (default=12)
-   * @option    args    fontColor           String      (Optional) Font color (default=#00000)
-   * @option    args    backgroundColor     String      (Optional) Background color (default=#ffffff)
-   * @option    args    fonts               Array       (Optional) Default font list
-   * @option    args    minSize             int         (Optional) Minimun size (default=6)
-   * @option    args    maxSize             int         (Optional) Maximum size (default=30
-   * @option    args    text                String      (Optional) Preview text
-   * @option    args    unit                String      (Optional) Size unit (default="px")
+   * OSjs.API.createDialog('Font', {}, fn);
    *
-   * @extends DialogWindow
-   * @class FontDialog
-   * @api OSjs.Dialogs.Font
+   * @param  {Object}          args                                An object with arguments
+   * @param  {String}          args.title                          Dialog title
+   * @param  {String}          [args.fontName=internal]            Current font name
+   * @param  {Number}          [args.fontSize=12]                  Current font size
+   * @param  {String}          [args.fontColor=#00000]             Font color
+   * @param  {String}          [args.backgroundColor=#ffffff]      Background color
+   * @param  {Array}           [args.fonts]                        Default font list
+   * @param  {Number}          [args.minSize=6]                    Minimun size
+   * @param  {Number}          [args.maxSize=30]                   Maximum size
+   * @param  {String}          [args.text]                         Preview text
+   * @param  {String}          [args.unit=px]                      Size unit
+   * @param  {CallbackDialog}  callback                            Callback when done
+   *
+   * @constructor Font
+   * @memberof OSjs.Dialogs
    */
   function FontDialog(args, callback) {
     args = Utils.argumentDefaults(args, {
@@ -139,7 +141,6 @@
   // EXPORTS
   /////////////////////////////////////////////////////////////////////////////
 
-  OSjs.Dialogs = OSjs.Dialogs || {};
-  OSjs.Dialogs.Font = FontDialog;
+  OSjs.Dialogs.Font = Object.seal(FontDialog);
 
 })(OSjs.API, OSjs.Utils, OSjs.Core.DialogWindow);

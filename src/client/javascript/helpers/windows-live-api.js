@@ -1,18 +1,18 @@
 /*!
- * OS.js - JavaScript Operating System
+ * OS.js - JavaScript Cloud/Web Desktop Platform
  *
- * Copyright (c) 2011-2015, Anders Evenrud <andersevenrud@gmail.com>
+ * Copyright (c) 2011-2016, Anders Evenrud <andersevenrud@gmail.com>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met: 
- * 
+ * modification, are permitted provided that the following conditions are met:
+ *
  * 1. Redistributions of source code must retain the above copyright notice, this
- *    list of conditions and the following disclaimer. 
+ *    list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
  *    this list of conditions and the following disclaimer in the documentation
- *    and/or other materials provided with the distribution. 
- * 
+ *    and/or other materials provided with the distribution.
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -31,10 +31,10 @@
 (function(Utils, API) {
   'use strict';
 
-  var OSjs = window.OSjs = window.OSjs || {};
-  //var WL   = window.WL   = window.WL || {};
-
-  OSjs.Helpers = OSjs.Helpers || {};
+  /**
+   * @namespace OSjs.Helpers.WindowsLiveAPI
+   * @memberof OSjs.Helpers
+   */
 
   var redirectURI = window.location.href.replace(/\/$/, '') + '/vendor/wlOauthReceiver.html';
 
@@ -44,18 +44,22 @@
 
   var SingletonInstance = null;
 
-
   /**
    * The WindowsLiveAPI wrapper class
    *
+   * <pre><b>
    * This is a private class and can only be aquired through
    * OSjs.Helpers.WindowsLiveAPI.createInsatance()
    *
    * Generally you want to create an instance of this helper
    * and when successfully created use `window.WL`.
+   * </b></pre>
    *
-   * @see OSjs.Helpers.WindowsLiveAPI.createInsatance()
-   * @api OSjs.Helpers.WindowsLiveAPI.WindowsLiveAPI
+   * @summary Helper for communicating with Windows Live API.
+   *
+   * @constructor Class
+   * @memberof OSjs.Helpers.WindowsLiveAPI
+   * @see OSjs.Helpers.WindowsLiveAPI.createInsatance
    *
    * @link http://msdn.microsoft.com/en-us/library/hh826547.aspx
    * @link http://msdn.microsoft.com/en-us/library/hh826538.aspx
@@ -64,9 +68,6 @@
    * @link http://msdn.microsoft.com/en-us/library/dn631839.aspx
    * @link http://msdn.microsoft.com/en-us/library/hh243643.aspx
    * @link https://account.live.com/developers/applications/index
-   *
-   * @private
-   * @class
    */
   function WindowsLiveAPI(clientId) {
     this.hasSession = false;
@@ -200,11 +201,10 @@
   /**
    * Sign out of WindowsLiveAPI
    *
-   * @param   Function    cb      Callback => fn(error, result)
+   * @function logout
+   * @memberof OSjs.Helpers.WindowsLiveAPI.Class#
    *
-   * @return  void
-   *
-   * @method  WindowsLiveAPI::logout()
+   * @param   {Function}    cb      Callback => fn(error, result)
    */
   WindowsLiveAPI.prototype.logout = function(callback) {
     callback = callback || function() {};
@@ -226,9 +226,7 @@
 
     WL.logout();
 
-    if ( OSjs.VFS.Modules.OneDrive ) {
-      OSjs.VFS.Modules.OneDrive.unmount();
-    }
+    OSjs.Core.getMountManager().remove('OneDrive');
   };
 
   /**
@@ -253,7 +251,7 @@
         callback(API._('WLAPI_LOGIN_FAILED'));
       }
     }, function(result) {
-        callback(API._('WLAPI_LOGIN_FAILED_FMT', result.error_description));
+      callback(API._('WLAPI_LOGIN_FAILED_FMT', result.error_description));
     });
   };
 
@@ -315,9 +313,10 @@
   /**
    * Gets the currently running instance
    *
-   * @api OSjs.Helpers.WindowsLiveAPI.getInstance()
+   * @function getInstance
+   * @memberof OSjs.Helpers.WindowsLiveAPI
    *
-   * @return  WindowsLiveAPI       Can also be null
+   * @return  {OSjs.Helpers.WindowsLiveAPI.Class}       Can also be null
    */
   OSjs.Helpers.WindowsLiveAPI.getInstance = function() {
     return SingletonInstance;
@@ -326,14 +325,12 @@
   /**
    * Create an instance of WindowsLiveAPI
    *
-   * @param   Object    args      Arguments
-   * @param   Function  callback  Callback function => fn(error, instance)
+   * @function createInstance
+   * @memberof OSjs.Helpers.WindowsLiveAPI
    *
-   * @option  args    Array     scope     What scope to load
-   *
-   * @api OSjs.Helpers.WindowsLiveAPI.createInstance()
-   *
-   * @return  void
+   * @param   {Object}    args           Arguments
+   * @param   {Array}     args.load      What functions/apis to load
+   * @param   {Function}  callback       Callback function => fn(error, instance)
    */
   OSjs.Helpers.WindowsLiveAPI.createInstance = function(args, callback) {
     args = args || {};

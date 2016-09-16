@@ -1,7 +1,7 @@
 /*!
- * OS.js - JavaScript Operating System
+ * OS.js - JavaScript Cloud/Web Desktop Platform
  *
- * Copyright (c) 2011-2015, Anders Evenrud <andersevenrud@gmail.com>
+ * Copyright (c) 2011-2016, Anders Evenrud <andersevenrud@gmail.com>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -150,7 +150,7 @@
     var root = Window.prototype.init.apply(this, arguments);
     var self = this;
 
-    var supported = OSjs.Core.Broadway ? true : false;
+    var supported = OSjs.Helpers.Broadway ? true : false;
     var lbl = 'Broadway support is ' + (supported ? 'loaded' : 'not loaded');
     var ws;
 
@@ -189,7 +189,7 @@
       connectButton.set('disabled', true);
       statusText.set('value', 'Connecting...');
 
-      OSjs.Core.Broadway.init(connectInput.get('value'), function(error) {
+      OSjs.Helpers.Broadway.init(connectInput.get('value'), function(error) {
         if ( self._destroyed ) { return; }
 
         if ( error ) {
@@ -386,8 +386,8 @@
     destroyConnectionWindow();
   });
 
-  OSjs.Core.Broadway = {};
-  OSjs.Core.Broadway.init = function(host, cb, cbclose) {
+  OSjs.Helpers.Broadway = {};
+  OSjs.Helpers.Broadway.init = function(host, cb, cbclose) {
     window.GTK.connect(host, {
       onSocketOpen: function() {
         _isConnected = true;

@@ -1,7 +1,7 @@
 /*!
- * OS.js - JavaScript Operating System
+ * OS.js - JavaScript Cloud/Web Desktop Platform
  *
- * Copyright (c) 2011-2015, Anders Evenrud <andersevenrud@gmail.com>
+ * Copyright (c) 2011-2016, Anders Evenrud <andersevenrud@gmail.com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,9 +30,6 @@
 (function() {
   'use strict';
 
-  window.OSjs = window.OSjs || {};
-  OSjs.Utils  = OSjs.Utils  || {};
-
   /////////////////////////////////////////////////////////////////////////////
   // EXPORTS
   /////////////////////////////////////////////////////////////////////////////
@@ -40,9 +37,10 @@
   /**
    * Gets browser compability flags
    *
-   * @return    Object      List of compability
+   * @function getCompability
+   * @memberof OSjs.Utils
    *
-   * @api       OSjs.Utils.getCompability()
+   * @return    {Object}      List of compability
    */
   OSjs.Utils.getCompability = (function() {
     function _checkSupport(enabled, check, isSupported) {
@@ -69,7 +67,7 @@
     function getUpload() {
       try {
         var xhr = new XMLHttpRequest();
-        return (!! (xhr && ('upload' in xhr) && ('onprogress' in xhr.upload)));
+        return (!!(xhr && ('upload' in xhr) && ('onprogress' in xhr.upload)));
       } catch ( e ) {}
       return false;
     }
@@ -161,19 +159,21 @@
     }
 
     function detectCSSFeature(featurename) {
-      var feature             = false,
-          domPrefixes         = 'Webkit Moz ms O'.split(' '),
-          elm                 = document.createElement('div'),
-          featurenameCapital  = null;
+      var feature = false;
+      var domPrefixes = 'Webkit Moz ms O'.split(' ');
+      var elm = document.createElement('div');
+      var featurenameCapital = null;
 
       featurename = featurename.toLowerCase();
 
-      if ( elm.style[featurename] ) { feature = true; }
+      if ( elm.style[featurename] ) {
+        feature = true;
+      }
 
       if ( feature === false ) {
         featurenameCapital = featurename.charAt(0).toUpperCase() + featurename.substr(1);
-        for( var i = 0; i < domPrefixes.length; i++ ) {
-          if( elm.style[domPrefixes[i] + featurenameCapital ] !== undefined ) {
+        for ( var i = 0; i < domPrefixes.length; i++ ) {
+          if ( elm.style[domPrefixes[i] + featurenameCapital ] !== undefined ) {
             feature = true;
             break;
           }
@@ -243,7 +243,7 @@
       worker         : 'Worker',
       file           : 'File',
       blob           : 'Blob',
-      orientation    : 'onorientationchange',
+      orientation    : 'onorientationchange'
     };
 
     var compability = {
@@ -294,8 +294,8 @@
    * @api       OSjs.Utils.isIE()
    */
   OSjs.Utils.isIE = function() {
-    var myNav = navigator.userAgent.toLowerCase();
-    return (myNav.indexOf('msie') !== -1) ? parseInt(myNav.split('msie')[1], 10) : false;
+    var dm = parseInt(document.documentMode, 10);
+    return dm <= 11 || !!navigator.userAgent.match(/(MSIE|Edge)/);
   };
 
   /**
@@ -303,9 +303,10 @@
    *
    * For example 'en_EN'
    *
-   * @return  String          Locale string
+   * @function getUserLocale
+   * @memberof OSjs.Utils
    *
-   * @api     OSjs.Utils.getUserLocale()
+   * @return  {String}          Locale string
    */
   OSjs.Utils.getUserLocale = function() {
     var loc = ((window.navigator.userLanguage || window.navigator.language) || 'en-EN').replace('-', '_');
@@ -331,15 +332,17 @@
   /**
    * Gets the browser window rect (x, y, width, height)
    *
-   * @api OSjs.Utils.getRect()
-   * @return Object
+   * @function getRect
+   * @memberof OSjs.Utils
+   *
+   * @return {Object}
    */
   OSjs.Utils.getRect = function() {
     return {
       top    : 0,
       left   : 0,
-      width  : window.innerWidth,
-      height : window.innerHeight
+      width  : document.body.offsetWidth,
+      height : document.body.offsetHeight
     };
   };
 

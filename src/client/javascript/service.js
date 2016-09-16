@@ -1,18 +1,18 @@
 /*!
- * OS.js - JavaScript Operating System
+ * OS.js - JavaScript Cloud/Web Desktop Platform
  *
- * Copyright (c) 2011-2015, Anders Evenrud <andersevenrud@gmail.com>
+ * Copyright (c) 2011-2016, Anders Evenrud <andersevenrud@gmail.com>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met: 
- * 
+ * modification, are permitted provided that the following conditions are met:
+ *
  * 1. Redistributions of source code must retain the above copyright notice, this
- *    list of conditions and the following disclaimer. 
+ *    list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
  *    this list of conditions and the following disclaimer in the documentation
- *    and/or other materials provided with the distribution. 
- * 
+ *    and/or other materials provided with the distribution.
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -30,9 +30,6 @@
 (function(Utils, API, Process) {
   'use strict';
 
-  window.OSjs = window.OSjs || {};
-  OSjs.Core   = OSjs.Core   || {};
-
   /////////////////////////////////////////////////////////////////////////////
   // SERVICE
   /////////////////////////////////////////////////////////////////////////////
@@ -40,25 +37,34 @@
   /**
    * Service Class
    *
-   * @param   String    name    Process name
-   * @param   Object    args    Process arguments
+   * <pre><b>
+   * YOU CANNOT CANNOT USE THIS VIA 'new' KEYWORD.
+   * </b></pre>
    *
-   * @api     OSjs.Core.Service
-   * @extends Process
-   * @class
+   * @summary Class used for basis as a Service.
+   *
+   * @param   {String}    name    Process name
+   * @param   {Object}    args    Process arguments
+   *
+   * @abstract
+   * @constructor
+   * @memberof OSjs.Core
+   * @extends OSjs.Core.Process
    */
-  var Service = function(name, args, metadata) {
+  function Service(name, args, metadata) {
+    console.group('Service::constructor()', name);
     Process.apply(this, arguments);
-  };
+    console.groupEnd();
+  }
 
   Service.prototype = Object.create(Process.prototype);
+  Service.constructor = Process;
 
   /**
    * Intiaialize the Service
    *
-   * @return  void
-   *
-   * @method Service::init()
+   * @function init
+   * @memberof OSjs.Core.Service#
    */
   Service.prototype.init = function() {
   };
@@ -67,6 +73,6 @@
   // EXPORTS
   /////////////////////////////////////////////////////////////////////////////
 
-  OSjs.Core.Service           = Service;
+  OSjs.Core.Service = Object.seal(Service);
 
 })(OSjs.Utils, OSjs.API, OSjs.Core.Process);

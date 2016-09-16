@@ -1,18 +1,18 @@
 /*!
- * OS.js - JavaScript Operating System
+ * OS.js - JavaScript Cloud/Web Desktop Platform
  *
- * Copyright (c) 2011-2015, Anders Evenrud <andersevenrud@gmail.com>
+ * Copyright (c) 2011-2016, Anders Evenrud <andersevenrud@gmail.com>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met: 
- * 
+ * modification, are permitted provided that the following conditions are met:
+ *
  * 1. Redistributions of source code must retain the above copyright notice, this
- *    list of conditions and the following disclaimer. 
+ *    list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
  *    this list of conditions and the following disclaimer in the documentation
- *    and/or other materials provided with the distribution. 
- * 
+ *    and/or other materials provided with the distribution.
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -29,6 +29,14 @@
  */
 (function(API, Utils, VFS, GUI) {
   'use strict';
+
+  /////////////////////////////////////////////////////////////////////////////
+  // ABSTRACTION HELPERS
+  /////////////////////////////////////////////////////////////////////////////
+
+  var _iconSizes = { // Defaults to 16x16
+    'gui-icon-view': '32x32'
+  };
 
   /////////////////////////////////////////////////////////////////////////////
   // HELPERS
@@ -49,7 +57,7 @@
 
   function getFileSize(iter) {
     var filesize = '';
-    if ( iter.type !== 'dir' && iter.size ) {
+    if ( iter.type !== 'dir' && iter.size >= 0 ) {
       filesize = Utils.humanFileSize(iter.size);
     }
     return filesize;
@@ -58,7 +66,7 @@
   var removeExtension = (function() {
     var mimeConfig;
 
-    return function (str, opts) {
+    return function(str, opts) {
       if ( !mimeConfig ) {
         mimeConfig = API.getConfig('MIME.mapping');
       }
@@ -80,7 +88,8 @@
     if ( typeof stamp === 'string' ) {
       var date = null;
       try {
-        date = new Date(stamp.replace('T', ' ').replace(/\..+/, ''));
+        date = new Date(stamp);
+        //date = new Date(stamp.replace('T', ' ').replace(/\..+/, ''));
       } catch ( e ) {}
 
       if ( date ) {
@@ -105,7 +114,7 @@
       },
       mime: {
         label: 'LBL_MIME',
-        basis: '100px',
+        size: '100px',
         icon: function() {
           return null;
         },
@@ -114,8 +123,8 @@
         }
       },
       mtime: {
-        label: 'Modified',
-        basis: '160px',
+        label: 'LBL_MODIFIED',
+        size: '160px',
         icon: function() {
           return null;
         },
@@ -124,8 +133,8 @@
         }
       },
       ctime: {
-        label: 'Created',
-        basis: '160px',
+        label: 'LBL_CREATED',
+        size: '160px',
         icon: function() {
           return null;
         },
@@ -135,7 +144,7 @@
       },
       size: {
         label: 'LBL_SIZE',
-        basis: '120px',
+        size: '120px',
         icon: function() {
           return null;
         },
@@ -166,14 +175,9 @@
           textalign: idx === 0 ? 'left' : 'right'
         });
       } else {
-        var grow = idx === 0 ? 1 : 0;
-        var shrink = grow;
-
         columns.push({
           label: API._(map.label),
-          basis: map.basis || 'auto',
-          grow: grow,
-          shrink: shrink,
+          size: map.size || '',
           resizable: idx > 0,
           textalign: idx === 0 ? 'left' : 'right'
         });
@@ -211,6 +215,7 @@
       });
     }
 
+    el.setAttribute('role', 'region');
     el.appendChild(nel.$element);
   }
 
@@ -226,27 +231,33 @@
       typeFilter:         opts.filetype || null
     };
 
-    VFS.scandir(file, function(error, result) {
-      if ( error ) { cb(error); return; }
+    try {
+      VFS.scandir(file, function(error, result) {
+        if ( error ) {
+          cb(error); return;
+        }
 
-      var list = [];
-      var summary = {size: 0, directories: 0, files: 0, hidden: 0};
+        var list = [];
+        var summary = {size: 0, directories: 0, files: 0, hidden: 0};
 
-      function isHidden(iter) {
-        return (iter.filename || '').substr(0) === '.';
-      }
+        function isHidden(iter) {
+          return (iter.filename || '').substr(0) === '.';
+        }
 
-      (result || []).forEach(function(iter) {
-        list.push(oncreate(iter));
+        (result || []).forEach(function(iter) {
+          list.push(oncreate(iter));
 
-        summary.size += iter.size || 0;
-        summary.directories += iter.type === 'dir' ? 1 : 0;
-        summary.files += iter.type !== 'dir' ? 1 : 0;
-        summary.hidden += isHidden(iter) ? 1 : 0;
-      });
+          summary.size += iter.size || 0;
+          summary.directories += iter.type === 'dir' ? 1 : 0;
+          summary.files += iter.type !== 'dir' ? 1 : 0;
+          summary.hidden += isHidden(iter) ? 1 : 0;
+        });
 
-      cb(false, list, summary);
-    }, scanopts);
+        cb(false, list, summary);
+      }, scanopts);
+    } catch ( e ) {
+      cb(e);
+    }
   }
 
   function readdir(el, dir, done, sopts) {
@@ -297,6 +308,7 @@
 
       done(error, result, summary);
     }, function(iter) {
+      var tooltip = Utils.format('{0}\n{1}\n{2} {3}', iter.type.toUpperCase(), iter.filename, getFileSize(iter), iter.mime || '');
 
       function _createEntry() {
         var row = {
@@ -304,7 +316,7 @@
           id: iter.id || removeExtension(iter.filename, opts),
           label: iter.filename,
           tooltip: tooltip,
-          icon: getFileIcon(iter, tagName === 'gui-icon-view' ? '32x32' : '16x16')
+          icon: getFileIcon(iter, _iconSizes[tagName] || '16x16')
         };
 
         if ( tagName === 'gui-tree-view' && iter.type === 'dir' ) {
@@ -318,8 +330,8 @@
         return row;
       }
 
-      var tooltip = Utils.format('{0}\n{1}\n{2} {3}', iter.type.toUpperCase(), iter.filename, getFileSize(iter), iter.mime || '');
-      if ( tagName === 'gui-icon-view' || tagName === 'gui-tree-view' ) {
+      // List view works a little differently
+      if ( tagName !== 'gui-list-view' ) {
         return _createEntry();
       }
 
@@ -341,24 +353,23 @@
    *
    * Abstraction layer for displaying files within Icon-, Tree- or List Views
    *
-   * Events:
-   *  select        When an entry was selected (click) => fn(ev)
-   *  activate      When an entry was activated (doubleclick) => fn(ev)
+   * For more properties and events etc, see 'dataview'
    *
-   * Parameters:
-   *  type          String      Child type
-   *  filter        Array       MIME Filters
-   *  dotfiles      boolean     Show dotfiles (default=true)
-   *  extensions    boolean     Show file extensions (default=true)
+   * <pre><code>
+   *   property  multiple    boolean       If multiple elements are selectable
+   *   property  type        String        Child type
+   *   property  filter      Array         MIME Filters
+   *   property  dotfiles    boolean       Show dotfiles (default=true)
+   *   property  extensions  boolean       Show file extensions (default=true)
+   *   action    chdir                     Change directory => fn(args)  (args = {path: '', done: function() })
+   * </code></pre>
    *
-   * Actions:
-   *  chdir(args)   Change directory (args = {path: '', done: function() })
-   *
-   * @api OSjs.GUI.Elements.gui-file-view
+   * @constructs OSjs.GUI.Element
+   * @memberof OSjs.GUI.Elements
+   * @var gui-file-view
    * @see OSjs.GUI.Elements.gui-list-view
    * @see OSjs.GUI.Elements.gui-tree-view
    * @see OSjs.GUI.Elements.gui-icon-view
-   * @class
    */
   GUI.Elements['gui-file-view'] = {
     bind: function(el, evName, callback, params) {
@@ -451,21 +462,19 @@
 
       API.createMenu([
         {
-          title: 'Show Hidden Files', // FIXME: Locale
+          title: API._('LBL_SHOW_HIDDENFILES'),
           type: 'checkbox',
           checked: scandirOptions.showHiddenFiles === true,
           onClick: function() {
             setOption('showHiddenFiles', !scandirOptions.showHiddenFiles);
-            API.blurMenu(); // FIXME: This should not be needed!
           }
         },
         {
-          title: 'Show File Extensions', // FIXME: Locale
+          title: API._('LBL_SHOW_FILEEXTENSIONS'),
           type: 'checkbox',
           checked: scandirOptions.showFileExtensions === true,
           onClick: function() {
             setOption('showFileExtensions', !scandirOptions.showFileExtensions);
-            API.blurMenu(); // FIXME: This should not be needed!
           }
         }
       ], ev);
@@ -484,15 +493,20 @@
           var t = new GUI.ElementDataView(target);
           var dir = args.path || OSjs.API.getDefaultPath();
 
-          readdir(el, dir, function(error, result, summary) {
-            if ( error ) {
-              API.error(API._('ERR_VFSMODULE_XHR_ERROR'), API._('ERR_VFSMODULE_SCANDIR_FMT', dir), error);
-            } else {
-              t.clear();
-              t.add(result);
-            }
-            args.done(error, summary);
-          });
+          clearTimeout(el._readdirTimeout);
+          el._readdirTimeout = setTimeout(function() {
+            readdir(el, dir, function(error, result, summary) {
+              if ( error ) {
+                API.error(API._('ERR_VFSMODULE_XHR_ERROR'), API._('ERR_VFSMODULE_SCANDIR_FMT', dir), error);
+              } else {
+                t.clear();
+                t.add(result);
+              }
+              args.done(error, summary);
+            });
+
+            el._readdirTimeout = clearTimeout(el._readdirTimeout);
+          }, 50); // Prevent exessive calls
           return;
         }
 

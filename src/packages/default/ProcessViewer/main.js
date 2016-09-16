@@ -1,18 +1,18 @@
 /*!
- * OS.js - JavaScript Operating System
+ * OS.js - JavaScript Cloud/Web Desktop Platform
  *
- * Copyright (c) 2011-2015, Anders Evenrud <andersevenrud@gmail.com>
+ * Copyright (c) 2011-2016, Anders Evenrud <andersevenrud@gmail.com>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met: 
- * 
+ * modification, are permitted provided that the following conditions are met:
+ *
  * 1. Redistributions of source code must retain the above copyright notice, this
- *    list of conditions and the following disclaimer. 
+ *    list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
  *    this list of conditions and the following disclaimer in the documentation
- *    and/or other materials provided with the distribution. 
- * 
+ *    and/or other materials provided with the distribution.
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -81,9 +81,9 @@
     }
 
     view.set('columns', [
-      {label: 'Name', basis: '100px', grow: 1, shrink: 1},
-      {label: 'PID', basis: '60px', grow: 0, shrink: 0, textalign: 'right'},
-      {label: 'Alive', basis: '60px', grow: 0, shrink: 0, textalign: 'right'}
+      {label: 'Name'},
+      {label: 'PID', size: '60px', textalign: 'right'},
+      {label: 'Alive', size: '60px', textalign: 'right'}
     ]);
 
     scheme.find(this, 'ButtonKill').on('click', function() {
@@ -92,7 +92,6 @@
         API.kill(selected[0].data);
       }
     });
-
 
     this.interval = setInterval(function() {
       update();
@@ -123,7 +122,7 @@
     return Application.prototype.destroy.apply(this, arguments);
   };
 
-  ApplicationProcessViewer.prototype.init = function(settings, metadata, onInited) {
+  ApplicationProcessViewer.prototype.init = function(settings, metadata) {
     Application.prototype.init.apply(this, arguments);
 
     var self = this;
@@ -131,8 +130,6 @@
     var scheme = GUI.createScheme(url);
     scheme.load(function(error, result) {
       self._addWindow(new ApplicationProcessViewerWindow(self, metadata, scheme));
-
-      onInited();
     });
 
     this._setScheme(scheme);
@@ -144,6 +141,6 @@
 
   OSjs.Applications = OSjs.Applications || {};
   OSjs.Applications.ApplicationProcessViewer = OSjs.Applications.ApplicationProcessViewer || {};
-  OSjs.Applications.ApplicationProcessViewer.Class = ApplicationProcessViewer;
+  OSjs.Applications.ApplicationProcessViewer.Class = Object.seal(ApplicationProcessViewer);
 
 })(OSjs.Core.Application, OSjs.Core.Window, OSjs.Utils, OSjs.API, OSjs.VFS, OSjs.GUI);

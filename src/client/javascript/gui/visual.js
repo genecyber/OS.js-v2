@@ -1,18 +1,18 @@
 /*!
- * OS.js - JavaScript Operating System
+ * OS.js - JavaScript Cloud/Web Desktop Platform
  *
- * Copyright (c) 2011-2015, Anders Evenrud <andersevenrud@gmail.com>
+ * Copyright (c) 2011-2016, Anders Evenrud <andersevenrud@gmail.com>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met: 
- * 
+ * modification, are permitted provided that the following conditions are met:
+ *
  * 1. Redistributions of source code must retain the above copyright notice, this
- *    list of conditions and the following disclaimer. 
+ *    list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
  *    this list of conditions and the following disclaimer in the documentation
- *    and/or other materials provided with the distribution. 
- * 
+ *    and/or other materials provided with the distribution.
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -59,7 +59,7 @@
         if ( (nodeType === 'video' || nodeType === 'audio') && k === 'load' ) {
           k = 'loadedmetadata';
         }
-        Utils.$bind(img, k, val, false);
+        Utils.$bind(img, k, val.bind(img), false);
       } else {
         if ( typeof applyArgs[k] === 'boolean' ) {
           val = val ? 'true' : 'false';
@@ -76,20 +76,20 @@
   // EXPORTS
   /////////////////////////////////////////////////////////////////////////////
 
-
   /**
    * Element: 'gui-audio'
    *
    * HTML5 Audio Element.
    *
-   * Parameters:
-   *  src       String        The source
+   * <pre><code>
+   *   getter    src   String        The source (src)
+   *   setter    src   String        The source (src)
+   *   property  src   String        The source (src)
+   * </code></pre>
    *
-   * Setters:
-   *  src                     Sets the source
-   *
-   * @api OSjs.GUI.Elements.gui-audio
-   * @class
+   * @constructs OSjs.GUI.Element
+   * @memberof OSjs.GUI.Elements
+   * @var gui-audio
    */
   GUI.Elements['gui-audio'] = {
     bind: function(el, evName, callback, params) {
@@ -106,14 +106,15 @@
    *
    * HTML5 Video Element.
    *
-   * Parameters:
-   *  src       String        The source
+   * <pre><code>
+   *   getter    src   String        The source (src)
+   *   setter    src   String        The source (src)
+   *   property  src   String        The source (src)
+   * </code></pre>
    *
-   * Setters:
-   *  src                     Sets the source
-   *
-   * @api OSjs.GUI.Elements.gui-video
-   * @class
+   * @constructs OSjs.GUI.Element
+   * @memberof OSjs.GUI.Elements
+   * @var gui-video
    */
   GUI.Elements['gui-video'] = {
     bind: function(el, evName, callback, params) {
@@ -130,14 +131,15 @@
    *
    * Normal Image Element.
    *
-   * Parameters:
-   *  src       String        The source
+   * <pre><code>
+   *   getter    src   String        The source (src)
+   *   setter    src   String        The source (src)
+   *   property  src   String        The source (src)
+   * </code></pre>
    *
-   * Setters:
-   *  src                     Sets the source
-   *
-   * @api OSjs.GUI.Elements.gui-image
-   * @class
+   * @constructs OSjs.GUI.Element
+   * @memberof OSjs.GUI.Elements
+   * @var gui-image
    */
   GUI.Elements['gui-image'] = {
     bind: function(el, evName, callback, params) {
@@ -154,14 +156,15 @@
    *
    * Canvas Element.
    *
-   * Parameters:
-   *  src       String        The source
+   * <pre><code>
+   *   getter    src   String        The source (src)
+   *   setter    src   String        The source (src)
+   *   property  src   String        The source (src)
+   * </code></pre>
    *
-   * Setters:
-   *  src                     Sets the source
-   *
-   * @api OSjs.GUI.Elements.gui-canvas
-   * @class
+   * @constructs OSjs.GUI.Element
+   * @memberof OSjs.GUI.Elements
+   * @var gui-canvas
    */
   GUI.Elements['gui-canvas'] = {
     bind: function(el, evName, callback, params) {

@@ -1,18 +1,18 @@
 /*!
- * OS.js - JavaScript Operating System
+ * OS.js - JavaScript Cloud/Web Desktop Platform
  *
- * Copyright (c) 2011-2015, Anders Evenrud <andersevenrud@gmail.com>
+ * Copyright (c) 2011-2016, Anders Evenrud <andersevenrud@gmail.com>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met: 
- * 
+ * modification, are permitted provided that the following conditions are met:
+ *
  * 1. Redistributions of source code must retain the above copyright notice, this
- *    list of conditions and the following disclaimer. 
+ *    list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
  *    this list of conditions and the following disclaimer in the documentation
- *    and/or other materials provided with the distribution. 
- * 
+ *    and/or other materials provided with the distribution.
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -37,41 +37,33 @@
   /**
    * PanelItem: AppMenu
    */
-  var PanelItemAppMenu = function(settings) {
-    PanelItem.apply(this, ['PanelItemAppMenu PanelItemFill', 'AppMenu', settings, {}]);
+  function PanelItemAppMenu(settings) {
+    PanelItem.apply(this, ['PanelItemAppMenu', 'AppMenu', settings, {}]);
     this.$container = null;
-  };
+  }
 
   PanelItemAppMenu.prototype = Object.create(PanelItem.prototype);
-  PanelItemAppMenu.Name = 'AppMenu'; // Static name
-  PanelItemAppMenu.Description = 'Application Menu'; // Static description
-  PanelItemAppMenu.Icon = 'actions/stock_about.png'; // Static icon
-  PanelItemAppMenu.HasOptions = false;
+  PanelItemAppMenu.constructor = PanelItem;
 
   PanelItemAppMenu.prototype.init = function() {
     var self = this;
     var root = PanelItem.prototype.init.apply(this, arguments);
     var wm = OSjs.Core.getWindowManager();
 
-    this.$container = document.createElement('ul');
-    root.appendChild(this.$container);
-
     var sel = document.createElement('li');
-    sel.className = 'Button';
     sel.title = API._('LBL_APPLICATIONS');
     sel.innerHTML = '<img alt="" src="' + API.getIcon(wm.getSetting('icon') || 'osjs-white.png') + '" />';
+    sel.className = 'corewm-panel-button-centered';
+    sel.setAttribute('role', 'button');
+    sel.setAttribute('data-label', 'OS.js Application Menu');
 
     Utils.$bind(sel, 'click', function(ev) {
       ev.preventDefault();
       ev.stopPropagation();
       OSjs.Applications.CoreWM.showMenu(ev);
     });
-    Utils.$bind(sel, 'contextmenu', function(ev) {
-      ev.preventDefault();
-      ev.stopPropagation();
-    });
 
-    this.$container.appendChild(sel);
+    this._$container.appendChild(sel);
 
     return root;
   };
@@ -85,9 +77,9 @@
   // EXPORTS
   /////////////////////////////////////////////////////////////////////////////
 
-  OSjs.Applications                                    = OSjs.Applications || {};
-  OSjs.Applications.CoreWM                             = OSjs.Applications.CoreWM || {};
-  OSjs.Applications.CoreWM.PanelItems                  = OSjs.Applications.CoreWM.PanelItems || {};
-  OSjs.Applications.CoreWM.PanelItems.AppMenu          = PanelItemAppMenu;
+  OSjs.Applications = OSjs.Applications || {};
+  OSjs.Applications.CoreWM = OSjs.Applications.CoreWM || {};
+  OSjs.Applications.CoreWM.PanelItems = OSjs.Applications.CoreWM.PanelItems || {};
+  OSjs.Applications.CoreWM.PanelItems.AppMenu = PanelItemAppMenu;
 
 })(OSjs.Applications.CoreWM.Class, OSjs.Applications.CoreWM.Panel, OSjs.Applications.CoreWM.PanelItem, OSjs.Utils, OSjs.API, OSjs.VFS);

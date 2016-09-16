@@ -1,18 +1,18 @@
 /*!
- * OS.js - JavaScript Operating System
+ * OS.js - JavaScript Cloud/Web Desktop Platform
  *
- * Copyright (c) 2011-2015, Anders Evenrud <andersevenrud@gmail.com>
+ * Copyright (c) 2011-2016, Anders Evenrud <andersevenrud@gmail.com>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met: 
- * 
+ * modification, are permitted provided that the following conditions are met:
+ *
  * 1. Redistributions of source code must retain the above copyright notice, this
- *    list of conditions and the following disclaimer. 
+ *    list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
  *    this list of conditions and the following disclaimer in the documentation
- *    and/or other materials provided with the distribution. 
- * 
+ *    and/or other materials provided with the distribution.
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -44,6 +44,7 @@
     Utils.$empty(el);
 
     var input = document.createElement(type === 'textarea' ? 'textarea' : 'input');
+
     var attribs = {
       value: null,
       type: type,
@@ -52,6 +53,10 @@
       disabled: disabled ? 'disabled' : null,
       name: group ? group + '[]' : null
     };
+
+    (['autocomplete', 'autocorrect', 'autocapitalize', 'spellcheck']).forEach(function(a) {
+      attribs[a] = el.getAttribute('data-' + a) || 'false';
+    });
 
     function _bindDefaults() {
       if ( ['range', 'slider'].indexOf(type) >= 0 ) {
@@ -68,7 +73,11 @@
 
       Object.keys(attribs).forEach(function(a) {
         if ( attribs[a] !== null ) {
-          input.setAttribute(a, attribs[a]);
+          if ( a === 'value' ) {
+            input.value = attribs[a];
+          } else {
+            input.setAttribute(a, attribs[a]);
+          }
         }
       });
     }
@@ -76,11 +85,14 @@
       if ( type === 'text' || type === 'password' || type === 'textarea' ) {
         Utils.$bind(input, 'keydown', function(ev) {
           if ( ev.keyCode === Utils.Keys.ENTER ) {
-            input.dispatchEvent(new CustomEvent('_enter', {detail: this.value}));
+            input.dispatchEvent(new CustomEvent('_enter', {detail: input.value}));
+          } else if ( ev.keyCode === Utils.Keys.C && ev.ctrlKey ) {
+            API.setClipboard(input.value);
           }
+
           if ( type === 'textarea' && ev.keyCode === Utils.Keys.TAB ) {
             ev.preventDefault();
-            this.value += '\t';
+            input.value += '\t';
           }
         }, false);
       }
@@ -91,6 +103,28 @@
       _bindEvents();
 
       GUI.Helpers.createInputLabel(el, type, input);
+
+      var rolemap = {
+        'TEXTAREA': function() {
+          return 'textbox';
+        },
+        'INPUT': function(i) {
+          var typemap = {
+            'range': 'slider',
+            'text': 'textbox',
+            'password': 'textbox'
+          };
+
+          return typemap[i.type] || i.type;
+        }
+      };
+
+      if ( rolemap[el.tagName] ) {
+        input.setAttribute('role', rolemap[el.tagName](input));
+      }
+      input.setAttribute('aria-label', el.getAttribute('title') || '');
+      el.setAttribute('role', 'region');
+      el.setAttribute('aria-disabled', String(disabled));
 
       Utils.$bind(input, 'change', function(ev) {
         var value = input.value;
@@ -106,8 +140,11 @@
   }
 
   function bindInputEvents(el, evName, callback, params) {
-    if ( evName === 'enter' ) { evName = '_enter'; }
-    if ( evName === 'change' ) { evName = '_change'; }
+    if ( evName === 'enter' ) {
+      evName = '_enter';
+    } else if ( evName === 'change' ) {
+      evName = '_change';
+    }
 
     var target = el.querySelector('textarea, input, select');
     Utils.$bind(target, evName, callback.bind(new GUI.Element(el)), params);
@@ -125,6 +162,7 @@
 
     entries.forEach(function(e) {
       var opt = document.createElement('option');
+      opt.setAttribute('role', 'option');
       opt.setAttribute('value', e.value);
       opt.appendChild(document.createTextNode(e.label));
 
@@ -179,6 +217,7 @@
       var label = sel.childNodes.length ? sel.childNodes[0].nodeValue : '';
 
       var option = document.createElement('option');
+      option.setAttribute('role', 'option');
       option.setAttribute('value', value);
       option.appendChild(document.createTextNode(label));
       if ( sel.getAttribute('selected') ) {
@@ -192,6 +231,10 @@
       select.dispatchEvent(new CustomEvent('_change', {detail: select.value}));
     }, false);
 
+    select.setAttribute('role', 'listbox');
+    select.setAttribute('aria-label', el.getAttribute('title') || '');
+    el.setAttribute('aria-disabled', String(disabled));
+    el.setAttribute('role', 'region');
     el.appendChild(select);
   }
 
@@ -232,16 +275,22 @@
    *
    * Just a normal label.
    *
-   * Setters:
-   *  value         Sets the label
-   *  label         Alias for 'value'
+   * <pre><code>
+   *   getter    value     String        The value/contents
+   *   setter    value     String        The value/contents
+   *   setter    label     String        The label text
+   *   property  disabled  boolean       Disabled state
+   * </code></pre>
    *
-   * @api OSjs.GUI.Elements.gui-label
-   * @class
+   * @constructs OSjs.GUI.Element
+   * @memberof OSjs.GUI.Elements
+   * @var gui-label
    */
   GUI.Elements['gui-label'] = {
     set: function(el, param, value, isHTML) {
       if ( param === 'value' || param === 'label' ) {
+        el.setAttribute('data-label', String(value));
+
         var lbl = el.querySelector('label');
         Utils.$empty(lbl);
         if ( isHTML ) {
@@ -257,6 +306,8 @@
       var label = GUI.Helpers.getValueLabel(el, true);
       var lbl = document.createElement('label');
       lbl.appendChild(document.createTextNode(label));
+      el.setAttribute('role', 'heading');
+      el.setAttribute('data-label', String(label));
       el.appendChild(lbl);
     }
   };
@@ -266,25 +317,37 @@
    *
    * Text area input (multi-line)
    *
-   * Events:
-   *  change        When input has changed => fn(ev)
+   * See `ev.detail` for data on events (like on 'change').
    *
-   * Parameters:
-   *  disabled  boolean     Disabled state
+   * <pre><code>
+   *   getter    value         String        The value/contents
+   *   setter    value         String        The value/contents
+   *   setter    label         String        The label text
+   *   setter    disabled      boolean       Set disabled state
+   *   property  disabled      boolean       Disabled state
+   *   property  value         String        The input value
+   *   property  placeholder   String        An optional placeholder
+   *   event     change                      When input has changed => fn(ev)
+   * </code></pre>
    *
-   * Getters:
-   *  value         Gets the input value
-   *
-   * Setters:
-   *  value         Sets the input value
-   *
-   * @api OSjs.GUI.Elements.gui-textarea
-   * @class
+   * @constructs OSjs.GUI.Element
+   * @memberof OSjs.GUI.Elements
+   * @var gui-textarea
    */
   GUI.Elements['gui-textarea'] = {
     bind: bindInputEvents,
     build: function(el) {
       createInputOfType(el, 'textarea');
+    },
+    set: function(el, param, value) {
+      if ( el && param === 'scrollTop' ) {
+        if ( typeof value !== 'number' ) {
+          value = el.firstChild.scrollHeight;
+        }
+        el.firstChild.scrollTop = value;
+        return true;
+      }
+      return false;
     }
   };
 
@@ -293,21 +356,22 @@
    *
    * Text input.
    *
-   * Events:
-   *  change        When input has changed => fn(ev)
-   *  enter         On enter press => fn(ev)
+   * See `ev.detail` for data on events (like on 'change').
    *
-   * Parameters:
-   *  disabled  boolean     Disabled state
+   * <pre><code>
+   *   getter    value         String        The value/contents
+   *   setter    value         String        The value/contents
+   *   setter    disabled      boolean       Set disabled state
+   *   property  disabled      boolean       Disabled state
+   *   property  value         String        The input value
+   *   property  placeholder   String        An optional placeholder
+   *   event     change                      When input has changed => fn(ev)
+   *   event     enter                       When enter key was pressed => fn(ev)
+   * </code></pre>
    *
-   * Getters:
-   *  value         Gets the input value
-   *
-   * Setters:
-   *  value         Sets the input value
-   *
-   * @api OSjs.GUI.Elements.gui-text
-   * @class
+   * @constructs OSjs.GUI.Element
+   * @memberof OSjs.GUI.Elements
+   * @var gui-text
    */
   GUI.Elements['gui-text'] = {
     bind: bindInputEvents,
@@ -321,21 +385,22 @@
    *
    * Password input.
    *
-   * Events:
-   *  change        When input has changed => fn(ev)
-   *  enter         On enter press => fn(ev)
+   * See `ev.detail` for data on events (like on 'change').
    *
-   * Parameters:
-   *  disabled  boolean     Disabled state
+   * <pre><code>
+   *   getter    value         String        The value/contents
+   *   setter    value         String        The value/contents
+   *   setter    disabled      boolean       Set disabled state
+   *   property  disabled      boolean       Disabled state
+   *   property  value         String        The input value
+   *   property  placeholder   String        An optional placeholder
+   *   event     change                      When input has changed => fn(ev)
+   *   event     enter                       When enter key was pressed => fn(ev)
+   * </code></pre>
    *
-   * Getters:
-   *  value         Gets the input value
-   *
-   * Setters:
-   *  value         Sets the input value
-   *
-   * @api OSjs.GUI.Elements.gui-password
-   * @class
+   * @constructs OSjs.GUI.Element
+   * @memberof OSjs.GUI.Elements
+   * @var gui-password
    */
   GUI.Elements['gui-password'] = {
     bind: bindInputEvents,
@@ -349,22 +414,25 @@
    *
    * File upload selector.
    *
-   * Events:
-   *  change        When input has changed => fn(ev)
+   * See `ev.detail` for data on events (like on 'change').
    *
-   * Getters:
-   *  value         Gets the input value
+   * <pre><code>
+   *   getter    value     String        The value/contents
+   *   setter    value     String        The value/contents
+   *   setter    disabled  boolean       Set disabled state
+   *   property  disabled  boolean       Disabled state
+   *   event     change                  When input has changed => fn(ev)
+   * </code></pre>
    *
-   * Setters:
-   *  value         Sets the input value
-   *
-   * @api OSjs.GUI.Elements.gui-file-upload
-   * @class
+   * @constructs OSjs.GUI.Element
+   * @memberof OSjs.GUI.Elements
+   * @var gui-file-upload
    */
   GUI.Elements['gui-file-upload'] = {
     bind: bindInputEvents,
     build: function(el) {
       var input = document.createElement('input');
+      input.setAttribute('role', 'button');
       input.setAttribute('type', 'file');
       input.onchange = function(ev) {
         input.dispatchEvent(new CustomEvent('_change', {detail: input.files[0]}));
@@ -378,20 +446,21 @@
    *
    * Radio selection input.
    *
-   * Events:
-   *  change        When input has changed => fn(ev)
+   * See `ev.detail` for data on events (like on 'change').
    *
-   * Parameters:
-   *  disabled  boolean     Disabled state
+   * <pre><code>
+   *   getter    value     boolean       The value/checked state
+   *   setter    value     boolean       The value/checked state
+   *   setter    disabled  boolean       Set disabled state
+   *   property  disabled  boolean       Disabled state
+   *   property  label     String        (Optional) Set a label on the input element
+   *   property  group     String        (Optional) A group identificator
+   *   event     change                  When input has changed => fn(ev)
+   * </code></pre>
    *
-   * Getters:
-   *  value         Gets the input value
-   *
-   * Setters:
-   *  value         Sets the input value
-   *
-   * @api OSjs.GUI.Elements.gui-radio
-   * @class
+   * @constructs OSjs.GUI.Element
+   * @memberof OSjs.GUI.Elements
+   * @var gui-radio
    */
   GUI.Elements['gui-radio'] = {
     bind: bindInputEvents,
@@ -405,20 +474,21 @@
    *
    * Checkbox selection input.
    *
-   * Events:
-   *  change        When input has changed => fn(ev)
+   * See `ev.detail` for data on events (like on 'change').
    *
-   * Parameters:
-   *  disabled  boolean     Disabled state
+   * <pre><code>
+   *   getter    value     boolean       The value/checked state
+   *   setter    value     boolean       The value/checked state
+   *   setter    disabled  boolean       Set disabled state
+   *   property  disabled  boolean       Disabled state
+   *   property  label     String        (Optional) Set a label on the input element
+   *   property  group     String        (Optional) A group identificator
+   *   event     change                  When input has changed => fn(ev)
+   * </code></pre>
    *
-   * Getters:
-   *  value         Gets the input value
-   *
-   * Setters:
-   *  value         Sets the input value
-   *
-   * @api OSjs.GUI.Elements.gui-checbox
-   * @class
+   * @constructs OSjs.GUI.Element
+   * @memberof OSjs.GUI.Elements
+   * @var gui-checkbox
    */
   GUI.Elements['gui-checkbox'] = {
     bind: bindInputEvents,
@@ -432,20 +502,19 @@
    *
    * A switch (on/off) input.
    *
-   * Events:
-   *  change        When input has changed => fn(ev)
+   * See `ev.detail` for data on events (like on 'change').
    *
-   * Parameters:
-   *  disabled  boolean     Disabled state
+   * <pre><code>
+   *   getter    value     String        The value/enabled state
+   *   setter    value     String        The value/enabled state
+   *   setter    disabled  boolean       Set disabled state
+   *   property  disabled  boolean       Disabled state
+   *   event     change                  When input has changed => fn(ev)
+   * </code></pre>
    *
-   * Getters:
-   *  value         Gets the input value
-   *
-   * Setters:
-   *  value         Sets the input value
-   *
-   * @api OSjs.GUI.Elements.gui-switch
-   * @class
+   * @constructs OSjs.GUI.Element
+   * @memberof OSjs.GUI.Elements
+   * @var gui-switch
    */
   GUI.Elements['gui-switch'] = {
     bind: bindInputEvents,
@@ -500,16 +569,19 @@
    *
    * A normal button
    *
-   * Events:
-   *  click         When button was clicked => fn(ev)
+   * <pre><code>
+   *   getter    value     String        The value
+   *   setter    value     String        The value
+   *   setter    icon      String        Icon source
+   *   setter    disabled  boolean       Set disabled state
+   *   property  disabled  boolean       Disabled state
+   *   property  icon      String        Icon source
+   *   event     click                   When input was clicked => fn(ev)
+   * </code></pre>
    *
-   * Parameters:
-   *  disabled    boolean     Disabled state
-   *  label       String      The label
-   *  icon        String      The icon (optional)
-   *
-   * @api OSjs.GUI.Elements.gui-button
-   * @class
+   * @constructs OSjs.GUI.Element
+   * @memberof OSjs.GUI.Elements
+   * @var gui-button
    */
   GUI.Elements['gui-button'] = {
     set: function(el, param, value, isHTML) {
@@ -521,6 +593,9 @@
         } else {
           lbl.appendChild(document.createTextNode(value));
         }
+
+        lbl.setAttribute('aria-label', value);
+
         return true;
       }
       return false;
@@ -574,7 +649,7 @@
       }
 
       function setImage() {
-        if ( icon ) {
+        if ( icon && icon !== 'null' ) {
           var img = document.createElement('img');
           img.src = icon;
           img.alt = el.getAttribute('data-tooltip') || '';
@@ -594,6 +669,7 @@
           Utils.$addClass(el, 'gui-has-label');
         }
         input.appendChild(document.createTextNode(label));
+        input.setAttribute('aria-label', label);
       }
 
       if ( disabled ) {
@@ -605,6 +681,7 @@
       setGroup(group);
       _buttonCount++;
 
+      el.setAttribute('role', 'navigation');
       el.appendChild(input);
     }
   };
@@ -614,25 +691,28 @@
    *
    * A selection dropdown.
    *
-   * Events:
-   *  change        When input has changed => fn(ev)
+   * See `ev.detail` for data on events (like on 'change').
    *
-   * Parameters:
-   *  disabled  boolean     Disabled state
+   * <pre><code>
+   *   getter    value     String        The value
+   *   setter    value     String        The value
+   *   setter    disabled  boolean       Set disabled state
+   *   property  disabled  boolean       Disabled state
+   *   event     change                  When input has changed => fn(ev)
+   *   action    add                     Add elements(s) => fn(entries)
+   *   action    clear                   Clear elements => fn()
+   *   action    remove                  Removes element => fn(arg)
+   * </code></pre>
    *
-   * Actions:
-   *  add(arg)      Adds en entry (or from array)
-   *  remove(arg)   Removes an entry
-   *  clear()
+   * @example
+   *   add({
+   *    label: "Label",
+   *    value: "Value"
+   *   })
    *
-   * Getters:
-   *  value         Gets the input value
-   *
-   * Setters:
-   *  value         Sets the input value
-   *
-   * @api OSjs.GUI.Elements.gui-select
-   * @class
+   * @constructs OSjs.GUI.Element
+   * @memberof OSjs.GUI.Elements
+   * @var gui-select
    */
   GUI.Elements['gui-select'] = guiSelect;
 
@@ -641,25 +721,22 @@
    *
    * A selection list (same as dropdown except multiple)
    *
-   * Events:
-   *  change        When input has changed => fn(ev)
+   * See `ev.detail` for data on events (like on 'change').
    *
-   * Parameters:
-   *  disabled  boolean     Disabled state
+   * <pre><code>
+   *   getter    value     String        The value
+   *   setter    value     String        The value
+   *   setter    disabled  boolean       Set disabled state
+   *   property  disabled  boolean       Disabled state
+   *   event     change                  When input has changed => fn(ev)
+   *   action    add                     Add elements(s) => fn(entries)
+   *   action    clear                   Clear elements => fn()
+   *   action    remove                  Removes element => fn(arg)
+   * </code></pre>
    *
-   * Actions:
-   *  add(arg)      Adds en entry (or from array)
-   *  remove(arg)   Removes an entry
-   *  clear()
-   *
-   * Getters:
-   *  value         Gets the input value
-   *
-   * Setters:
-   *  value         Sets the input value
-   *
-   * @api OSjs.GUI.Elements.gui-select-list
-   * @class
+   * @constructs OSjs.GUI.Element
+   * @memberof OSjs.GUI.Elements
+   * @var gui-select-list
    */
   GUI.Elements['gui-select-list'] = guiSelect;
 
@@ -668,22 +745,21 @@
    *
    * A slider input.
    *
-   * Events:
-   *  change        When input has changed => fn(ev)
+   * See `ev.detail` for data on events (like on 'change').
    *
-   * Parameters:
-   *  min       int         Minimum value
-   *  max       int         Maximum value
-   *  disabled  boolean     Disabled state
+   * <pre><code>
+   *   getter    value     String        The value
+   *   setter    value     String        The value
+   *   setter    disabled  boolean       Set disabled state
+   *   property  min       integer       The minimum value
+   *   property  max       integer       The maxmimum value
+   *   property  disabled  boolean       Disabled state
+   *   event     change                  When input has changed => fn(ev)
+   * </code></pre>
    *
-   * Getters:
-   *  value         Gets the input value
-   *
-   * Setters:
-   *  value         Sets the input value
-   *
-   * @api OSjs.GUI.Elements.gui-slider
-   * @class
+   * @constructs OSjs.GUI.Element
+   * @memberof OSjs.GUI.Elements
+   * @var gui-slider
    */
   GUI.Elements['gui-slider'] = {
     bind: bindInputEvents,
@@ -704,21 +780,21 @@
    *
    * A text area displaying current value with a button to open a modal/dialog etc.
    *
-   * Events:
-   *  open          When the open button was pressed => fn(ev)
+   * <pre><code>
+   *   getter    value     String        The value
+   *   setter    value     String        The value
+   *   event     open                    When button was pressed => fn(ev)
+   * </code></pre>
    *
-   * Getters:
-   *  value         Gets the input value
-   *
-   * Setters:
-   *  value         Sets the input value
-   *
-   * @api OSjs.GUI.Elements.gui-input-modal
-   * @class
+   * @constructs OSjs.GUI.Element
+   * @memberof OSjs.GUI.Elements
+   * @var gui-input-modal
    */
   GUI.Elements['gui-input-modal'] = {
     bind: function(el, evName, callback, params) {
-      if ( evName === 'open' ) { evName = '_open'; }
+      if ( evName === 'open' ) {
+        evName = '_open';
+      }
       Utils.$bind(el, evName, callback.bind(new GUI.Element(el)), params);
     },
     get: function(el, param) {
@@ -734,6 +810,8 @@
         input.removeAttribute('disabled');
         input.value = value;
         input.setAttribute('disabled', 'disabled');
+        input.setAttribute('aria-disabled', 'true');
+
         return true;
       }
       return false;
@@ -757,6 +835,5 @@
       el.appendChild(container);
     }
   };
-
 
 })(OSjs.API, OSjs.Utils, OSjs.VFS, OSjs.GUI);

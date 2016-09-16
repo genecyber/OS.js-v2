@@ -1,18 +1,18 @@
 /*!
- * OS.js - JavaScript Operating System
+ * OS.js - JavaScript Cloud/Web Desktop Platform
  *
- * Copyright (c) 2011-2015, Anders Evenrud <andersevenrud@gmail.com>
+ * Copyright (c) 2011-2016, Anders Evenrud <andersevenrud@gmail.com>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met: 
- * 
+ * modification, are permitted provided that the following conditions are met:
+ *
  * 1. Redistributions of source code must retain the above copyright notice, this
- *    list of conditions and the following disclaimer. 
+ *    list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
  *    this list of conditions and the following disclaimer in the documentation
- *    and/or other materials provided with the distribution. 
- * 
+ *    and/or other materials provided with the distribution.
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -33,23 +33,27 @@
   /**
    * An 'File' dialog
    *
-   * @param   args      Object        An object with arguments
-   * @param   callback  Function      Callback when done => fn(ev, button, result)
+   * @example
    *
-   * @option    args    title       String      Dialog title
-   * @option    args    type        String      Dialog type (default=open, alternative=save)
-   * @option    args    multiple    boolean     Multiple file selection (default=false)
-   * @option    args    file        VFS.File    (Optional) Current file
-   * @option    args    path        String      (Optional) Default path
-   * @option    args    filename    String      (Optional) Default filename
-   * @option    args    extension   String      (Optional) Default file extension
-   * @option    args    mime        String      (Optional) Default file MIME
-   * @option    args    filter      Array       (Optional) Array of MIMIE filters
-   * @option    args    select      String      (Optional) Selection type (file/dir)
+   * OSjs.API.createDialog('File', {}, fn);
    *
-   * @extends DialogWindow
-   * @class FileDialog
-   * @api OSjs.Dialogs.File
+   * @param  {Object}           args                      An object with arguments
+   * @param  {String}           args.title                Dialog title
+   * @param  {String}           args.title                Dialog title
+   * @param  {String}           [args.type=open]          Dialog type (alternative=save)
+   * @param  {Boolean}          [args.multiple=false]     Multiple file selection
+   * @param  {OSjs.VFS.File}    [args.file]               Current file
+   * @param  {String}           [args.path]               Default path
+   * @param  {String}           [args.filename]           Default filename
+   * @param  {String}           [args.extension]          Default file extension
+   * @param  {String}           [args.mime]               Default file MIME
+   * @param  {Array}            [args.filter]             Array of MIMIE filters
+   * @param  {Array}            [args.mfilter]            Array of function to filter module list
+   * @param  {String}           [args.select]             Selection type (file/dir)
+   * @param  {CallbackDialog}   callback                  Callback when done
+   *
+   * @constructor File
+   * @memberof OSjs.Dialogs
    */
   function FileDialog(args, callback) {
     args = Utils.argumentDefaults(args, {
@@ -61,6 +65,7 @@
       extension:  '',
       mime:       'application/octet-stream',
       filter:     [],
+      mfilter:    [],
       select:     null,
       multiple:   false
     });
@@ -125,7 +130,10 @@
     var mlist = this.scheme.find(this, 'ModuleSelect');
 
     function checkEmptyInput() {
-      var disable = !filename.get('value').length;
+      var disable = false;
+      if ( self.args.select !== 'dir' ) {
+        disable = !filename.get('value').length;
+      }
       self.scheme.find(self, 'ButtonOK').set('disabled', disable);
     }
 
@@ -151,7 +159,7 @@
           if ( self.selected.type !== 'dir' ) {
             filename.set('value', self.selected.filename);
           }
-          self.checkSelection(ev);
+          self.checkSelection(ev, true);
         }
       }
     });
@@ -206,14 +214,28 @@
       this.scheme.find(this, 'FileInput').hide();
     }
 
-    var rootPath = VFS.getRootFromPath(this.path);
-    var modules = [];
-    VFS.getModules().forEach(function(m) {
-      modules.push({
+    var mm = OSjs.Core.getMountManager();
+    var rootPath = mm.getRootFromPath(this.path);
+    var modules = mm.getModules().filter(function(m) {
+      if ( self.args.mfilter.length ) {
+        var success = false;
+
+        self.args.mfilter.forEach(function(fn) {
+          if ( !success ) {
+            success = fn(m);
+          }
+        });
+
+        return success;
+      }
+      return true;
+    }).map(function(m) {
+      return {
         label: m.name + (m.module.readOnly ? Utils.format(' ({0})', API._('LBL_READONLY')) : ''),
         value: m.module.root
-      });
+      };
     });
+
     mlist.clear().add(modules).set('value', rootPath);
     mlist.on('change', function(ev) {
       self.changePath(ev.detail, true);
@@ -232,12 +254,16 @@
     var lastDir = this.path;
 
     function resetLastSelected() {
-      var rootPath = VFS.getRootFromPath(lastDir);
-      self.scheme.find(self, 'ModuleSelect').set('value', rootPath);
+      var mm = OSjs.Core.getMountManager();
+      var rootPath = mm.getRootFromPath(lastDir);
+      try {
+        self.scheme.find(self, 'ModuleSelect').set('value', rootPath);
+      } catch ( e ) {
+        console.warn('FileDialog::changePath()', 'resetLastSelection()', e);
+      }
     }
 
     this._toggleLoading(true);
-
 
     view._call('chdir', {
       path: dir || this.path,
@@ -294,12 +320,15 @@
     };
   };
 
-  FileDialog.prototype.checkSelection = function(ev) {
+  FileDialog.prototype.checkSelection = function(ev, wasActivated) {
     var self = this;
 
     if ( this.selected && this.selected.type === 'dir' ) {
-      this.changePath(this.selected.path);
-      return false;
+      if ( wasActivated ) {
+        // this.args.select !== 'dir' &&
+        this.changePath(this.selected.path);
+        return false;
+      }
     }
 
     if ( this.args.type === 'save' ) {
@@ -316,35 +345,52 @@
       VFS.exists(this.selected, function(error, result) {
         self._toggleDisabled(false);
 
-        if ( error ) {
-          API.error(API._('DIALOG_FILE_ERROR'), API._('DIALOG_FILE_MISSING_FILENAME'));
+        if ( self._destroyed ) {
           return;
         }
 
-        if ( result ) {
-          self._toggleDisabled(true);
-          API.createDialog('Confirm', {
-            buttons: ['yes', 'no'],
-            message: API._('DIALOG_FILE_OVERWRITE', self.selected.filename)
-          }, function(ev, button) {
-            self._toggleDisabled(false);
-
-            if ( button === 'yes' || button === 'ok' ) {
-              self.closeCallback(ev, 'ok', self.selected);
-            }
-          }, self);
+        if ( error ) {
+          API.error(API._('DIALOG_FILE_ERROR'), API._('DIALOG_FILE_MISSING_FILENAME'));
         } else {
-          self.closeCallback(ev, 'ok', self.selected);
+          if ( result ) {
+            self._toggleDisabled(true);
+
+            if ( self.selected ) {
+              API.createDialog('Confirm', {
+                buttons: ['yes', 'no'],
+                message: API._('DIALOG_FILE_OVERWRITE', self.selected.filename)
+              }, function(ev, button) {
+                self._toggleDisabled(false);
+
+                if ( button === 'yes' || button === 'ok' ) {
+                  self.closeCallback(ev, 'ok', self.selected);
+                }
+              }, self);
+            }
+          } else {
+            self.closeCallback(ev, 'ok', self.selected);
+          }
         }
 
       });
+
+      return false;
     } else {
-      if ( !this.selected ) {
+      if ( !this.selected && this.args.select !== 'dir' ) {
         API.error(API._('DIALOG_FILE_ERROR'), API._('DIALOG_FILE_MISSING_SELECTION'));
         return false;
       }
 
-      this.closeCallback(ev, 'ok', this.selected);
+      var res = this.selected;
+      if ( !res && this.args.select === 'dir' ) {
+        res = new VFS.File({
+          filename: Utils.filename(this.path),
+          path: this.path,
+          type: 'dir'
+        });
+      }
+
+      this.closeCallback(ev, 'ok', res);
     }
 
     return true;
@@ -362,7 +408,6 @@
   // EXPORTS
   /////////////////////////////////////////////////////////////////////////////
 
-  OSjs.Dialogs = OSjs.Dialogs || {};
-  OSjs.Dialogs.File = FileDialog;
+  OSjs.Dialogs.File = Object.seal(FileDialog);
 
 })(OSjs.API, OSjs.VFS, OSjs.Utils, OSjs.Core.DialogWindow);

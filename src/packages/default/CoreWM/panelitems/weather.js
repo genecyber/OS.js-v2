@@ -1,18 +1,18 @@
 /*!
- * OS.js - JavaScript Operating System
+ * OS.js - JavaScript Cloud/Web Desktop Platform
  *
- * Copyright (c) 2011-2015, Anders Evenrud <andersevenrud@gmail.com>
+ * Copyright (c) 2011-2016, Anders Evenrud <andersevenrud@gmail.com>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met: 
- * 
+ * modification, are permitted provided that the following conditions are met:
+ *
  * 1. Redistributions of source code must retain the above copyright notice, this
- *    list of conditions and the following disclaimer. 
+ *    list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
  *    this list of conditions and the following disclaimer in the documentation
- *    and/or other materials provided with the distribution. 
- * 
+ *    and/or other materials provided with the distribution.
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -30,8 +30,6 @@
 (function(CoreWM, Panel, PanelItem, Utils, API, VFS) {
   'use strict';
 
-  var _itemCount = 0;
-
   /////////////////////////////////////////////////////////////////////////////
   // ITEM
   /////////////////////////////////////////////////////////////////////////////
@@ -39,14 +37,16 @@
   /**
    * PanelItem: Weather
    */
-  var PanelItemWeather = function() {
+  function PanelItemWeather() {
     var self = this;
 
-    PanelItem.apply(this, ['PanelItemWeather PanelItemFill PanelItemRight']);
+    PanelItem.apply(this, ['PanelItemWeather corewm-panel-right corewm-panel-dummy']);
 
     this.clockInterval  = null;
     this.position = null;
     this.interval = null;
+    this.$element = null;
+    this.$image = null;
 
     if ( navigator.geolocation ) {
       navigator.geolocation.getCurrentPosition(function(pos) {
@@ -56,38 +56,42 @@
         }, 100);
       });
     }
-  };
+  }
 
   PanelItemWeather.prototype = Object.create(PanelItem.prototype);
-  PanelItemWeather.Name = 'Weather'; // Static name
-  PanelItemWeather.Description = 'Weather notification'; // Static description
-  PanelItemWeather.Icon = 'status/weather-few-clouds.png'; // Static icon
+  PanelItemWeather.constructor = PanelItem;
 
   PanelItemWeather.prototype.init = function() {
     var root = PanelItem.prototype.init.apply(this, arguments);
-    this.updateWeather(root);
+    this.$element = document.createElement('li');
+    this.$image = document.createElement('img');
+    this.$element.appendChild(this.$image);
+    this._$container.appendChild(this.$element);
+    this.updateWeather();
     return root;
   };
 
   PanelItemWeather.prototype.destroy = function() {
     this.interval = clearInterval(this.interval);
+    this.$image = Utils.$remove(this.$image);
+    this.$element = Utils.$remove(this.$element);
+
     PanelItem.prototype.destroy.apply(this, arguments);
   };
 
-  PanelItemWeather.prototype.updateWeather = function(root) {
+  PanelItemWeather.prototype.updateWeather = function() {
     var self = this;
-    root = root || this._$element;
 
-    if ( !root ) {
+    if ( !this.$image ) {
       return;
     }
 
-    root.title = 'Not allowed or unavailable';
+    this.$image.title = 'Not allowed or unavailable';
 
     var busy = false;
 
     function setImage(src) {
-      root.style.background = 'transparent url(\'' + src + '\') no-repeat center center';
+      self.$image.src = src;
     }
 
     function setWeather(name, weather, main) {
@@ -144,7 +148,7 @@
       }
 
       var src = API.getIcon('status/' + icon);
-      root.title = Utils.format('{0} - {1} - {2}', name, desc, temp);
+      self.$image.title = Utils.format('{0} - {1} - {2}', name, desc, temp);
       setImage(src);
     }
 
@@ -156,21 +160,26 @@
 
       var lat = self.position.coords.latitude;
       var lon = self.position.coords.longitude;
-      var cbn = 'PanelItemWeatherCallback_' + _itemCount;
       var unt = 'metric';
-      var url = Utils.format('http://api.openweathermap.org/data/2.5/weather?lat={0}&lon={1}&callback={2}&units={3}', lat, lon, cbn, unt);
-      var script = null;
+      var key = '4ea33327bcfa4ea0293b2d02b6fda385';
+      var url = Utils.format('http://api.openweathermap.org/data/2.5/weather?lat={0}&lon={1}&units={2}&APPID={3}', lat, lon, unt, key);
 
-      window[cbn] = function(result) {
+      API.curl({
+        url: url
+      }, function(error, response) {
+        if ( !error && response ) {
+          var result = null;
+          try {
+            result = JSON.parse(response.body);
+          } catch ( e ) {}
+
+          if ( result ) {
+            setWeather(result.name, result.weather ? result.weather[0] : null, result.main);
+          }
+        }
+
         busy = false;
-        setWeather(result.name, result.weather ? result.weather[0] : null, result.main);
-        Utils.$remove(script);
-        delete window[cbn];
-      };
-
-      script = Utils.$createJS(url);
-
-      _itemCount++;
+      });
     }
 
     setImage(API.getIcon('status/weather-severe-alert.png'));
@@ -179,7 +188,7 @@
       updateWeather();
     }, (60 * 60 * 1000));
 
-    Utils.$bind(root, 'click', function() {
+    Utils.$bind(this._$root, 'click', function() {
       updateWeather();
     });
 
@@ -192,9 +201,9 @@
   // EXPORTS
   /////////////////////////////////////////////////////////////////////////////
 
-  OSjs.Applications                                    = OSjs.Applications || {};
-  OSjs.Applications.CoreWM                             = OSjs.Applications.CoreWM || {};
-  OSjs.Applications.CoreWM.PanelItems                  = OSjs.Applications.CoreWM.PanelItems || {};
-  OSjs.Applications.CoreWM.PanelItems.Weather          = PanelItemWeather;
+  OSjs.Applications = OSjs.Applications || {};
+  OSjs.Applications.CoreWM = OSjs.Applications.CoreWM || {};
+  OSjs.Applications.CoreWM.PanelItems = OSjs.Applications.CoreWM.PanelItems || {};
+  OSjs.Applications.CoreWM.PanelItems.Weather = PanelItemWeather;
 
 })(OSjs.Applications.CoreWM.Class, OSjs.Applications.CoreWM.Panel, OSjs.Applications.CoreWM.PanelItem, OSjs.Utils, OSjs.API, OSjs.VFS);

@@ -1,7 +1,7 @@
 /*!
- * OS.js - JavaScript Operating System
+ * OS.js - JavaScript Cloud/Web Desktop Platform
  *
- * Copyright (c) 2011-2015, Anders Evenrud <andersevenrud@gmail.com>
+ * Copyright (c) 2011-2016, Anders Evenrud <andersevenrud@gmail.com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,19 +30,6 @@
 (function(WindowManager, Window, GUI, Utils, API, VFS) {
   'use strict';
 
-  var DefaultCategories = {
-    development : {icon: 'categories/package_development.png', title: 'Development'},
-    education   : {icon: 'categories/applications-sience.png', title: 'Education'},
-    games       : {icon: 'categories/package_games.png',       title: 'Games'},
-    graphics    : {icon: 'categories/package_graphics.png',    title: 'Graphics'},
-    network     : {icon: 'categories/package_network.png',     title: 'Network'},
-    multimedia  : {icon: 'categories/package_multimedia.png',  title: 'Multimedia'},
-    office      : {icon: 'categories/package_office.png',      title: 'Office'},
-    system      : {icon: 'categories/package_system.png',      title: 'System'},
-    utilities   : {icon: 'categories/package_utilities.png',   title: 'Utilities'},
-    unknown     : {icon: 'categories/applications-other.png',  title: 'Other'}
-  };
-
   function _createIcon(aiter, aname, arg) {
     return API.getIcon(aiter.icon, arg, aiter);
   }
@@ -52,10 +39,12 @@
    */
   function doBuildCategoryMenu(ev) {
     var apps = OSjs.Core.getPackageManager().getPackages();
+    var wm = OSjs.Core.getWindowManager();
+    var cfgCategories = wm.getSetting('menu');
 
     function createEvent(iter) {
       return function(el) {
-        OSjs.API.createDraggable(el, {
+        OSjs.GUI.Helpers.createDraggable(el, {
           type   : 'application',
           data   : {
             launch: iter.name
@@ -72,13 +61,13 @@
 
     var cats = {};
 
-    Object.keys(DefaultCategories).forEach(function(c) {
+    Object.keys(cfgCategories).forEach(function(c) {
       cats[c] = [];
     });
 
     Object.keys(apps).forEach(function(a) {
       var iter = apps[a];
-      if ( iter.type === 'application' ) {
+      if ( iter.type === 'application' && iter.visible !== false ) {
         var cat = iter.category && cats[iter.category] ? iter.category : 'unknown';
         cats[cat].push({name: a, data: iter});
       }
@@ -100,8 +89,8 @@
 
       if ( submenu.length ) {
         list.push({
-          title: OSjs.Applications.CoreWM._(DefaultCategories[c].title),
-          icon:  API.getIcon(DefaultCategories[c].icon, '16x16'),
+          title: OSjs.Applications.CoreWM._(cfgCategories[c].title),
+          icon:  API.getIcon(cfgCategories[c].icon, '16x16'),
           menu:  submenu
         });
       }
@@ -127,9 +116,9 @@
       img.src = _createIcon(iter, a, '32x32');
 
       var txt = document.createElement('div');
-      txt.appendChild(document.createTextNode(iter.name.replace(/([^\s-]{6})([^\s-]{6})/, '$1-$2')));
+      txt.appendChild(document.createTextNode(iter.name)); //.replace(/([^\s-]{8})([^\s-]{8})/, '$1-$2')));
 
-      Utils.$bind(entry, 'mousedown', function(ev) {
+      Utils.$bind(entry, 'click', function(ev) {
         ev.stopPropagation();
         API.launch(a);
         API.blurMenu();
@@ -142,7 +131,7 @@
 
     Object.keys(apps).forEach(function(a) {
       var iter = apps[a];
-      if ( iter.type === 'application' ) {
+      if ( iter.type === 'application' && iter.visible !== false ) {
         createEntry(a, iter);
       }
     });
@@ -156,17 +145,18 @@
   };
 
   ApplicationMenu.prototype.show = function(pos) {
-    if ( !this.$element ) { return; }
+    if ( !this.$element ) {
+      return;
+    }
 
     if ( !this.$element.parentNode ) {
       document.body.appendChild(this.$element);
     }
 
-
     // FIXME: This is a very hackish way of doing it and does not work when button is moved!
     Utils.$removeClass(this.$element, 'AtBottom');
     Utils.$removeClass(this.$element, 'AtTop');
-    if ( pos.y > (window.innerHeight/2) ) {
+    if ( pos.y > (window.innerHeight / 2) ) {
       Utils.$addClass(this.$element, 'AtBottom');
 
       this.$element.style.top = 'auto';
@@ -192,35 +182,29 @@
   function doShowMenu(ev) {
     var wm = OSjs.Core.getWindowManager();
 
-    function isTouchDevice() {
-      if ( 'ontouchstart' in document.documentElement ) {
-        return true;
-      }
-      try {
-        if ( document.createEvent('TouchEvent') ) {
-          return true;
-        }
-      } catch ( e ) {}
-
-      var el = document.createElement('div');
-      el.setAttribute('ongesturestart', 'return;'); // or try 'ontouchstart'
-      return typeof el.ongesturestart === 'function';
-    }
-
-    //if ( isTouchDevice() || (wm && wm.getSetting('useTouchMenu') === true) ) {
-    //FIXME
     if ( (wm && wm.getSetting('useTouchMenu') === true) ) {
       var inst = new ApplicationMenu();
       var pos = {x: ev.clientX, y: ev.clientY};
+
       if ( ev.target ) {
-        var target = ev.target;
-        if ( target.tagName === 'IMG' ) {
-          target = target.parentNode;
-        }
-        var rect = Utils.$position(target, document.body);
+        var rect = Utils.$position(ev.target, document.body);
         if ( rect.left && rect.top && rect.width && rect.height ) {
-          pos.x = rect.left - (rect.width/2) + 4;
-          pos.y = rect.top + rect.height + 4;
+          pos.x = rect.left - (rect.width / 2);
+
+          if ( pos.x <= 16 ) {
+            pos.x = 0; // Snap to left
+          }
+
+          var panel = Utils.$parent(ev.target, function(node) {
+            return node.tagName.toLowerCase() === 'corewm-panel';
+          });
+
+          if ( panel ) {
+            var prect = Utils.$position(panel);
+            pos.y = prect.top + prect.height;
+          } else {
+            pos.y = rect.top + rect.height;
+          }
         }
       }
       API.createMenu(null, pos, inst);

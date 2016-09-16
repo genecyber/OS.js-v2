@@ -1,18 +1,18 @@
 /*!
- * OS.js - JavaScript Operating System
+ * OS.js - JavaScript Cloud/Web Desktop Platform
  *
- * Copyright (c) 2011-2015, Anders Evenrud <andersevenrud@gmail.com>
+ * Copyright (c) 2011-2016, Anders Evenrud <andersevenrud@gmail.com>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met: 
- * 
+ * modification, are permitted provided that the following conditions are met:
+ *
  * 1. Redistributions of source code must retain the above copyright notice, this
- *    list of conditions and the following disclaimer. 
+ *    list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
  *    this list of conditions and the following disclaimer in the documentation
- *    and/or other materials provided with the distribution. 
- * 
+ *    and/or other materials provided with the distribution.
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -31,9 +31,6 @@
 (function(Application, Window, Utils, VFS, API, GUI) {
   'use strict';
 
-  window.OSjs       = window.OSjs       || {};
-  OSjs.Helpers      = OSjs.Helpers      || {};
-
   /////////////////////////////////////////////////////////////////////////////
   // Default Application Window Helper
   /////////////////////////////////////////////////////////////////////////////
@@ -43,10 +40,12 @@
    *
    * Use in combination with 'DefaultApplication'
    *
-   * @see OSjs.Helpers.DefaultApplication
-   * @api OSjs.Helpers.DefaultApplicationWindow
+   * @summary Helper for making Applications with file interaction.
    *
-   * @class
+   * @constructor
+   * @memberof OSjs.Helpers
+   * @see OSjs.Helpers.DefaultApplication
+   * @see OSjs.Core.Window
    */
   function DefaultApplicationWindow(name, app, args, scheme, file) {
     Window.apply(this, arguments);
@@ -85,15 +84,27 @@
     var app = this._app;
 
     var menuMap = {
-      MenuNew:    function() { app.newDialog(self.currentFile, self); },
-      MenuSave:   function() { app.saveDialog(self.currentFile, self); },
-      MenuSaveAs: function() { app.saveDialog(self.currentFile, self, true); },
-      MenuOpen:   function() { app.openDialog(self.currentFile, self); },
-      MenuClose:  function() { self._close(); }
+      MenuNew:    function() {
+        app.newDialog(self.currentFile, self);
+      },
+      MenuSave:   function() {
+        app.saveDialog(self.currentFile, self);
+      },
+      MenuSaveAs: function() {
+        app.saveDialog(self.currentFile, self, true);
+      },
+      MenuOpen:   function() {
+        app.openDialog(self.currentFile, self);
+      },
+      MenuClose:  function() {
+        self._close();
+      }
     };
 
     this._scheme.find(this, 'SubmenuFile').on('select', function(ev) {
-      if ( menuMap[ev.detail.id] ) { menuMap[ev.detail.id](); }
+      if ( menuMap[ev.detail.id] ) {
+        menuMap[ev.detail.id]();
+      }
     });
 
     this._scheme.find(this, 'MenuSave').set('disabled', true);
@@ -112,7 +123,9 @@
    * On Drag-And-Drop Event
    */
   DefaultApplicationWindow.prototype._onDndEvent = function(ev, type, item, args) {
-    if ( !Window.prototype._onDndEvent.apply(this, arguments) ) { return; }
+    if ( !Window.prototype._onDndEvent.apply(this, arguments) ) {
+      return;
+    }
 
     if ( type === 'itemDrop' && item ) {
       var data = item.data;
@@ -149,11 +162,10 @@
   /**
    * Checks if current file has changed
    *
-   * @param   Function      cb        Callback => fn(discard_changes)
+   * @function  checkHasChanged
+   * @memberof OSjs.Helpers.DefaultApplicationWindow#
    *
-   * @return  void
-   *
-   * @method  DefaultApplicationWindow::checkHasChanged()
+   * @param   {Function}      cb        Callback => fn(discard_changes)
    */
   DefaultApplicationWindow.prototype.checkHasChanged = function(cb) {
     var self = this;
@@ -177,14 +189,13 @@
   /**
    * Show opened/created file
    *
-   * @param   OSjs.VFS.File       file        File
-   * @param   Mixed               content     File contents
-   *
    * YOU SHOULD EXTEND THIS METHOD IN YOUR WINDOW TO ACTUALLY DISPLAY CONTENT
    *
-   * @return  void
+   * @function  showFile
+   * @memberof OSjs.Helpers.DefaultApplicationWindow#
    *
-   * @method  DefaultApplicationWindow::showFile()
+   * @param   {OSjs.VFS.File}       file        File
+   * @param   {Mixed}               content     File contents
    */
   DefaultApplicationWindow.prototype.showFile = function(file, content) {
     this.updateFile(file);
@@ -193,17 +204,18 @@
   /**
    * Updates current view for given File
    *
-   * @param   OSjs.VFS.File       file        File
+   * @function updateFile
+   * @memberof OSjs.Helpers.DefaultApplicationWindow#
    *
-   * @return  void
-   *
-   * @method  DefaultApplicationWindow::updateFile()
+   * @param   {OSjs.VFS.File}       file        File
    */
   DefaultApplicationWindow.prototype.updateFile = function(file) {
     this.currentFile = file || null;
     this.hasChanged = false;
 
-    this._scheme.find(this, 'MenuSave').set('disabled', !file);
+    if ( this._scheme && (this._scheme instanceof GUI.Scheme) ) {
+      this._scheme.find(this, 'MenuSave').set('disabled', !file);
+    }
 
     if ( file ) {
       this._setTitle(file.filename, true);
@@ -217,12 +229,31 @@
    *
    * YOU SHOULD IMPLEMENT THIS METHOD IN YOUR WINDOW TO RETURN FILE CONTENTS
    *
-   * @return  Mixed File contents
+   * @function getFileData
+   * @memberof OSjs.Helpers.DefaultApplicationWindow#
    *
-   * @method  DefaultApplicationWindow::getFileData()
+   * @return  {Mixed} File contents
    */
   DefaultApplicationWindow.prototype.getFileData = function() {
     return null;
+  };
+
+  /**
+   * Window key
+   */
+  DefaultApplicationWindow.prototype._onKeyEvent = function(ev, type, shortcut) {
+    if ( shortcut === 'save' ) {
+      this._app.saveDialog(this.currentFile, this, !this.currentFile);
+      return false;
+    } else if ( shortcut === 'saveas' ) {
+      this._app.saveDialog(this.currentFile, this, true);
+      return false;
+    } else if ( shortcut === 'open' ) {
+      this._app.openDialog(this.currentFile, this);
+      return false;
+    }
+
+    return Window.prototype._onKeyEvent.apply(this, arguments);
   };
 
   /////////////////////////////////////////////////////////////////////////////

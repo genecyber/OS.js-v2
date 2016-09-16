@@ -1,18 +1,18 @@
 /*!
- * OS.js - JavaScript Operating System
+ * OS.js - JavaScript Cloud/Web Desktop Platform
  *
- * Copyright (c) 2011-2015, Anders Evenrud <andersevenrud@gmail.com>
+ * Copyright (c) 2011-2016, Anders Evenrud <andersevenrud@gmail.com>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met: 
- * 
+ * modification, are permitted provided that the following conditions are met:
+ *
  * 1. Redistributions of source code must retain the above copyright notice, this
- *    list of conditions and the following disclaimer. 
+ *    list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
  *    this list of conditions and the following disclaimer in the documentation
- *    and/or other materials provided with the distribution. 
- * 
+ *    and/or other materials provided with the distribution.
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -30,8 +30,25 @@
 (function(Utils, API, Window) {
   'use strict';
 
-  window.OSjs = window.OSjs || {};
-  OSjs.Core   = OSjs.Core   || {};
+  /**
+   * A callback for Dialogs.
+   *
+   * <pre>
+   * The list of included buttons are: ok, cancel, yes, no
+   * depending on which dialog was called.
+   *
+   * The result also depends on which dialog was called.
+   *
+   * The default button is 'cancel' if window was closed.
+   *
+   * You only get an event back if an actual button was pressed.
+   * </pre>
+   *
+   * @callback CallbackDialog
+   * @param {Event}   ev      Browser event that occured from action
+   * @param {String}  button  Which button that was clicked
+   * @param {Mixed}   result  Result from dialog input
+   */
 
   /////////////////////////////////////////////////////////////////////////////
   // DIALOG
@@ -42,17 +59,28 @@
    *
    * A simple wrapper with some pre-defined options
    *
-   * @see OSjs.Core.Window
-   * @api OSjs.Core.DialogWindow
-   * @class DialogWindow
-   * @extends Window
+   * <pre><b>
+   * YOU CANNOT CANNOT USE THIS VIA 'new' KEYWORD.
+   * </b></pre>
+   *
+   * @summary Class used for basis as a Dialog.
+   *
+   * @abstract
+   * @constructor
+   * @memberof OSjs.Core
+   * @extends OSjs.Core.Window
+   * @see OSjs.API.createDialog
    */
   function DialogWindow(className, opts, args, callback) {
     var self = this;
 
     opts = opts || {};
     args = args || {};
+
     callback = callback || function() {};
+    if ( typeof callback !== 'function' ) {
+      throw new TypeError('DialogWindow expects a callback Function, gave: ' + typeof callback);
+    }
 
     console.info('DialogWindow::construct()', className, opts, args);
 
@@ -67,12 +95,22 @@
     this._state.ontop                 = true;
     this._tag                         = 'DialogWindow';
 
+    if ( args.scheme && args.scheme instanceof OSjs.GUI.Scheme ) {
+      this.scheme = args.scheme;
+      delete args.scheme;
+    } else {
+      this.scheme = OSjs.GUI.DialogScheme.get();
+    }
+
     this.args = args;
-    this.scheme = OSjs.Core.getHandler().dialogs;
     this.className = className;
     this.buttonClicked = false;
 
     this.closeCallback = function(ev, button, result) {
+      if ( self._destroyed ) {
+        return;
+      }
+
       self.buttonClicked = true;
       callback.apply(self, arguments);
       self._close();
@@ -82,9 +120,16 @@
   DialogWindow.prototype = Object.create(Window.prototype);
   DialogWindow.constructor = Window;
 
+  /**
+   * @override
+   * @function init
+   * @memberof OSjs.Core.DialogWindow#
+   */
   DialogWindow.prototype.init = function() {
     var self = this;
+
     var root = Window.prototype.init.apply(this, arguments);
+    root.setAttribute('role', 'dialog');
 
     this.scheme.render(this, this.className.replace(/Dialog$/, ''), root, 'application-dialog', function(node) {
       node.querySelectorAll('gui-label').forEach(function(el) {
@@ -103,11 +148,17 @@
       ButtonNo:     'no'
     };
 
+    var focusButtons = ['ButtonCancel', 'ButtonNo'];
+
     Object.keys(buttonMap).forEach(function(id) {
       if ( self.scheme.findDOM(self, id) ) {
-        self.scheme.find(self, id).on('click', function(ev) {
+        var btn = self.scheme.find(self, id);
+        btn.on('click', function(ev) {
           self.onClose(ev, buttonMap[id]);
         });
+        if ( focusButtons.indexOf(id) >= 0 ) {
+          btn.focus();
+        }
       }
     });
 
@@ -116,10 +167,21 @@
     return root;
   };
 
+  /**
+   * When dialog closes
+   *
+   * @function onClose
+   * @memberof OSjs.Core.DialogWindow#
+   */
   DialogWindow.prototype.onClose = function(ev, button) {
     this.closeCallback(ev, button, null);
   };
 
+  /**
+   * @override
+   * @function _close
+   * @memberof OSjs.Core.DialogWindow#
+   */
   DialogWindow.prototype._close = function() {
     if ( !this.buttonClicked ) {
       this.onClose(null, 'cancel', null);
@@ -127,6 +189,11 @@
     return Window.prototype._close.apply(this, arguments);
   };
 
+  /**
+   * @override
+   * @function _onKeyEvent
+   * @memberof OSjs.Core.DialogWindow#
+   */
   DialogWindow.prototype._onKeyEvent = function(ev) {
     Window.prototype._onKeyEvent.apply(this, arguments);
 
@@ -135,11 +202,31 @@
     }
   };
 
+  /**
+   * Parses given message to be inserted into Dialog
+   *
+   * @function parseMessage
+   * @memberof OSjs.Core.DialogWindow
+   */
+  DialogWindow.parseMessage = function(msg) {
+    msg = Utils.$escape(msg || '').replace(/\*\*(.*)\*\*/g, '<span>$1</span>');
+
+    var tmp = document.createElement('div');
+    tmp.innerHTML = msg;
+
+    var frag = document.createDocumentFragment();
+    for ( var i = 0; i < tmp.childNodes.length; i++ ) {
+      frag.appendChild(tmp.childNodes[i].cloneNode(true));
+    }
+    tmp = null;
+
+    return frag;
+  };
 
   /////////////////////////////////////////////////////////////////////////////
   // EXPORTS
   /////////////////////////////////////////////////////////////////////////////
 
-  OSjs.Core.DialogWindow      = DialogWindow;
+  OSjs.Core.DialogWindow = Object.seal(DialogWindow);
 
 })(OSjs.Utils, OSjs.API, OSjs.Core.Window);
